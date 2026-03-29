@@ -1,0 +1,9 @@
+version: "1.0"
+name: "ticket-support-env"
+description: "A real-world task environment for AI agents to handle customer tickets."
+type: "custom"
+framework: "OpenEnv"
+endpoints:
+  reset: "/reset"
+  step: "/step"
+  state: "/state"
