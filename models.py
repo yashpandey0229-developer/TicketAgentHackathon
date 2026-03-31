@@ -14,3 +14,9 @@ class Action(BaseModel):
 class Reward(BaseModel):
     score: float
     comment: str
+
+# Yeh naya model hai jo main.py ke /step endpoint ke liye zaroori hai
+class StepResponse(BaseModel):
+    observation: Observation
+    reward: Reward
+    done: bool
