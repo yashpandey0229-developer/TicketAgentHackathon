@@ -1,8 +1,9 @@
 from fastapi import FastAPI
+import uvicorn
 from models import Observation, Action, Reward, StepResponse
 from environment import TicketEnv
-import uvicorn
 
+# FastAPI App initialization
 app = FastAPI(title="TicketAgentEnv - OpenEnv Edition")
 env = TicketEnv()
 
@@ -18,7 +19,7 @@ def home():
 @app.post("/reset", response_model=Observation)
 def reset():
     """Environment ko initial state par lata hai."""
-    state = env.reset() # Ensure environment.py has a reset() method
+    state = env.reset()
     return Observation(**state)
 
 @app.get("/state", response_model=Observation)
@@ -32,13 +33,22 @@ def step(action: Action):
     """Agent action leta hai aur reward/next state milti hai."""
     score, done, comment = env.step(action.action_type, action.content)
     
-    # OpenEnv spec ke mutabiq strictly structured response
     return StepResponse(
         observation=Observation(**env.get_state()),
         reward=Reward(score=score, comment=comment),
         done=done
     )
 
+# --- VALIDATOR REQUIREMENTS START ---
+
+def main():
+    """
+    Validator ki main demand: Ek main function jo server start kare.
+    Hugging Face Spaces default port 7860 use karta hai.
+    """
+    uvicorn.run("main:app", host="0.0.0.0", port=7860, reload=False)
+
 if __name__ == "__main__":
-    # Hugging Face Spaces default port 7860 use karta hai
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    main()
+
+# --- VALIDATOR REQUIREMENTS END ---

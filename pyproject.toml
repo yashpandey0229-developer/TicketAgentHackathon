@@ -14,8 +14,8 @@ dependencies = [
     "pydantic",
     "requests",
     "openai",
-    "openenv-core>=0.2.0"  # <--- YEH ZAROORI HAI
+    "openenv-core>=0.2.0"
 ]
 
 [project.scripts]
-server = "main:app"        # <--- YEH ENTRY POINT MAANG RAHA HAI
+server = "main:main"
