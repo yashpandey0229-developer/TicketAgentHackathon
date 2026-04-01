@@ -2,19 +2,21 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-# System dependencies agar zaroori ho
+# System dependencies
 RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
+# Dependencies install karo
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Project files copy karo
+# Saara code copy karo
 COPY . .
 
-# Port ko 7860 kar do (Hugging Face ka favorite)
+# Environment variable set karo taaki imports sahi chalein
+ENV PYTHONPATH=/app
+
+# Port expose karo
 EXPOSE 7860
 
-# --- YEH LINE UPDATE KARO ---
-# Ab hum uvicorn direct nahi, balki python se server/app.py chalaenge 
-# taaki validator ko wahi mile jo wo dhoond raha hai.
+# Validator ki demand ke mutabiq server/app.py chalao
 CMD ["python", "server/app.py"]
