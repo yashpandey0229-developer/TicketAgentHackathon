@@ -4,8 +4,8 @@ build-backend = "setuptools.build-meta"
 
 [project]
 name = "ticket-agent-env"
-version = "1.0.0"
-description = "A customer support ticket environment following OpenEnv spec"
+version = "0.1.0"
+description = "TicketAgentEnv compliant with OpenEnv"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -13,5 +13,9 @@ dependencies = [
     "uvicorn",
     "pydantic",
     "requests",
-    "openai"
+    "openai",
+    "openenv-core>=0.2.0"  # <--- YEH ZAROORI HAI
 ]
+
+[project.scripts]
+server = "main:app"        # <--- YEH ENTRY POINT MAANG RAHA HAI
