@@ -4,14 +4,14 @@ class TicketEnv:
     def __init__(self):
         # 3 Alag-alag difficulty ke tasks
         self.tickets = [
-            {"id": "T1", "issue": "Mera order deliver nahi hua", "priority": "Low", "status": "Open"}, # Easy
-            {"id": "T2", "issue": "Payment fail ho gayi par paise kat gaye", "priority": "Medium", "status": "Open"}, # Medium
-            {"id": "T3", "issue": "Account hack ho gaya hai", "priority": "Low", "status": "Open"} # Hard (Security)
+            {"id": "T1", "issue": "Mera order deliver nahi hua", "priority": "Low", "status": "Open"}, 
+            {"id": "T2", "issue": "Payment fail ho gayi par paise kat gaye", "priority": "Medium", "status": "Open"}, 
+            {"id": "T3", "issue": "Account hack ho gaya hai", "priority": "Low", "status": "Open"} 
         ]
         self.current_idx = 0
 
     def reset(self):
-        """Environment ko restart karta hai (Mandatory for RL)"""
+        """Environment ko restart karta hai"""
         self.current_idx = 0
         return self.get_state()
 
@@ -21,32 +21,34 @@ class TicketEnv:
 
     def step(self, action_type, content):
         ticket = self.tickets[self.current_idx]
-        reward_score = 0.0
+        
+        # 🚨 MANDATORY FIX: Initial reward set to 0.05 (instead of 0.0)
+        reward_score = 0.05 
         comment = "Incorrect action."
         done = False
 
-        # --- TASK 1 (Easy): T1 - Delivery issue -> Medium Priority ---
+        # --- TASK 1: T1 - Delivery issue -> Medium Priority ---
         if ticket["id"] == "T1":
             if action_type == "set_priority" and content == "Medium":
-                reward_score = 1.0
+                reward_score = 0.95  # 🚨 FIX: 0.95 instead of 1.0
                 comment = "Sahi! Delivery issues ko Medium priority milni chahiye."
             elif action_type == "set_priority" and content == "High":
-                reward_score = 0.5  # Partial Reward!
+                reward_score = 0.50 
                 comment = "Theek hai, par Medium zyada accurate hota."
 
-        # --- TASK 2 (Medium): T2 - Payment issue -> High Priority ---
+        # --- TASK 2: T2 - Payment issue -> High Priority ---
         elif ticket["id"] == "T2":
             if action_type == "set_priority" and content == "High":
-                reward_score = 1.0
+                reward_score = 0.95  # 🚨 FIX: 0.95 instead of 1.0
                 comment = "Perfect! Money issues hamesha High priority hote hain."
 
-        # --- TASK 3 (Hard): T3 - Security issue -> High Priority & Action ---
+        # --- TASK 3: T3 - Security issue -> High Priority ---
         elif ticket["id"] == "T3":
             if action_type == "set_priority" and content == "High":
-                reward_score = 1.0
+                reward_score = 0.95  # 🚨 FIX: 0.95 instead of 1.0
                 comment = "Excellent! Critical security issue handled."
             elif action_type == "set_priority" and content == "Medium":
-                reward_score = 0.3 # Penalizing low effort for security
+                reward_score = 0.35 
                 comment = "Security issue hai, priority aur badhao."
 
         # Move to next ticket
