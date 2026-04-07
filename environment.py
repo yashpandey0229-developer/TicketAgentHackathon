@@ -22,40 +22,43 @@ class TicketEnv:
     def step(self, action_type, content):
         ticket = self.tickets[self.current_idx]
         
-        # 🚨 MANDATORY FIX: Initial reward set to 0.05 (instead of 0.0)
+        # 🚨 FINAL FIX: Baseline hamesha 0.05 (Never 0.0)
         reward_score = 0.05 
         comment = "Incorrect action."
         done = False
 
-        # --- TASK 1: T1 - Delivery issue -> Medium Priority ---
+        # Logic for Task T1
         if ticket["id"] == "T1":
             if action_type == "set_priority" and content == "Medium":
-                reward_score = 0.95  # 🚨 FIX: 0.95 instead of 1.0
-                comment = "Sahi! Delivery issues ko Medium priority milni chahiye."
+                reward_score = 0.95
+                comment = "Sahi! Medium priority accurate hai."
             elif action_type == "set_priority" and content == "High":
                 reward_score = 0.50 
-                comment = "Theek hai, par Medium zyada accurate hota."
+                comment = "Partial reward, Medium better hota."
 
-        # --- TASK 2: T2 - Payment issue -> High Priority ---
+        # Logic for Task T2
         elif ticket["id"] == "T2":
             if action_type == "set_priority" and content == "High":
-                reward_score = 0.95  # 🚨 FIX: 0.95 instead of 1.0
-                comment = "Perfect! Money issues hamesha High priority hote hain."
+                reward_score = 0.95
+                comment = "Perfect! Money issues High priority hain."
+            else:
+                reward_score = 0.10 # Still in range (0, 1)
 
-        # --- TASK 3: T3 - Security issue -> High Priority ---
+        # Logic for Task T3
         elif ticket["id"] == "T3":
             if action_type == "set_priority" and content == "High":
-                reward_score = 0.95  # 🚨 FIX: 0.95 instead of 1.0
-                comment = "Excellent! Critical security issue handled."
+                reward_score = 0.95
+                comment = "Critical security issue handled."
             elif action_type == "set_priority" and content == "Medium":
                 reward_score = 0.35 
-                comment = "Security issue hai, priority aur badhao."
+                comment = "Security issues High priority hone chahiye."
 
-        # Move to next ticket
+        # Increment index
         self.current_idx = (self.current_idx + 1) % len(self.tickets)
         
-        # Agar aakhri ticket handle ho gaya, toh done = True
+        # Check if done
         if self.current_idx == 0:
             done = True
             
-        return reward_score, done, comment
+        # 🚨 Ensure returning float and strictly in range
+        return float(reward_score), done, comment
