@@ -7,23 +7,22 @@ from openai import OpenAI
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN")
-# Space URL ensures we hit your running environment
 ENV_URL = "https://yashpandey0229-ticketagentenv.hf.space"
 
 def log_start(task, env, model):
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
 def log_step(step, action, reward, done, error="null"):
-    # FORCE RANGE: Ensure reward is strictly between 0 and 1 (e.g., 0.01 to 0.99)
-    clamped_reward = max(0.01, min(0.99, reward))
-    if clamped_reward == 1.0: clamped_reward = 0.99
-    if clamped_reward == 0.0: clamped_reward = 0.01
+    # 🚨 FIX: Force range strictly between 0 and 1
+    val = float(reward)
+    clamped = max(0.01, min(0.99, val))
     
-    print(f"[STEP] step={step} action={action} reward={clamped_reward:.2f} done={str(done).lower()} error={error}", flush=True)
+    # Yahan 'clamped' print hona chahiye, 'reward' nahi!
+    print(f"[STEP] step={step} action={action} reward={clamped:.2f} done={str(done).lower()} error={error}", flush=True)
 
 def log_end(success, steps, rewards):
-    # Force range for all rewards in the list
-    clamped_rewards = [max(0.01, min(0.99, r)) for r in rewards]
+    # Fix for the final list as well
+    clamped_rewards = [max(0.01, min(0.99, float(r))) for r in rewards]
     rewards_str = ",".join(f"{r:.2f}" for r in clamped_rewards)
     print(f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}", flush=True)
 
@@ -38,10 +37,10 @@ def run_single_task(client, task_id):
         with urllib.request.urlopen(req_reset) as res:
             obs = json.loads(res.read().decode())
 
-        # 2. Proxy LLM Call (Mandatory)
+        # 2. Proxy LLM Call
         completion = client.chat.completions.create(
             model=MODEL_NAME,
-            messages=[{"role": "user", "content": f"Ticket: {obs['issue']}"}],
+            messages=[{"role": "user", "content": f"Resolve: {obs['issue']}"}],
             max_tokens=5
         )
 
@@ -54,7 +53,6 @@ def run_single_task(client, task_id):
         with urllib.request.urlopen(req_step) as res:
             result = json.loads(res.read().decode())
         
-        # Hum environment ka reward lenge par use log_step mein clamp kar denge
         raw_reward = float(result['reward']['score'])
         rewards.append(raw_reward)
         
