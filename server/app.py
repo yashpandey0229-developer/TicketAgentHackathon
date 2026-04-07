@@ -1,7 +1,9 @@
 import uvicorn
 from fastapi import FastAPI, Body
+from environment import TicketEnv
 
 app = FastAPI()
+env = TicketEnv()
 
 @app.get("/")
 async def root():
@@ -9,19 +11,19 @@ async def root():
 
 @app.post("/reset")
 async def reset():
-    # Standard response to pass Phase 1
-    return {"id": "T1", "issue": "Standard Ticket", "status": "Open"}
+    return env.reset()
 
 @app.post("/step")
 async def step(payload: dict = Body(...)):
-    # Standard response to pass Phase 1
+    action_type = payload.get("action_type", "solve")
+    content = payload.get("content", "")
+    reward_score, done, comment = env.step(action_type, content)
     return {
-        "reward": {"score": 0.85, "comment": "Valid Action"},
-        "done": True
+        "reward": {"score": reward_score, "comment": comment},
+        "done": done
     }
 
 def main():
-    # Grader checks if this function is callable
     uvicorn.run(app, host="0.0.0.0", port=7860)
 
 if __name__ == "__main__":
