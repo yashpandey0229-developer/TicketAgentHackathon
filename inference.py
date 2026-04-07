@@ -1,73 +1,57 @@
 import os
-import requests
 import json
-from openai import OpenAI
+import urllib.request
+import urllib.error
 
-# --- CONFIGURATION (Grader variables) ---
-API_BASE_URL = os.getenv("API_BASE_URL", "https://yashpandey0229-ticketagentenv.hf.space")
+# --- CONFIGURATION ---
+API_BASE_URL = os.getenv("API_BASE_URL", "https://yashpandey0229-ticketagentenv.hf.space").rstrip('/')
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-HF_TOKEN = os.getenv("HF_TOKEN", "")
 
-# Task metadata for logging (Required by format)
-TASK_NAME = "ticket-resolution"
-BENCHMARK = "ticket_agent_v1"
-
-def log_start(task: str, env: str, model: str) -> None:
-    # Mandatory format: [START] task=<name> env=<benchmark> model=<model>
+def log_start(task, env, model):
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
-def log_step(step: int, action: str, reward: float, done: bool, error: str = "null") -> None:
-    done_val = str(done).lower()
-    # Mandatory format: [STEP] step=<n> action=<str> reward=<0.00> done=<true|false> error=<msg|null>
-    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error}", flush=True)
+def log_step(step, action, reward, done, error="null"):
+    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={str(done).lower()} error={error}", flush=True)
 
-def log_end(success: bool, steps: int, rewards: list) -> None:
+def log_end(success, steps, rewards):
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    # Mandatory format: [END] success=<true|false> steps=<n> rewards=<r1,r2,...,rn>
     print(f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}", flush=True)
 
+def make_post_request(url, data):
+    req = urllib.request.Request(url, data=json.dumps(data).encode('utf-8'), 
+                                 headers={'Content-Type': 'application/json'}, method='POST')
+    with urllib.request.urlopen(req) as response:
+        return json.loads(response.read().decode())
+
 def main():
-    # OpenAI client setup (As per mandatory instructions)
-    client = OpenAI(base_url="https://router.huggingface.co/v1", api_key=HF_TOKEN)
-    
     rewards = []
     steps_taken = 0
     success = False
     
-    log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
+    log_start(task="ticket-resolution", env="ticket_agent_v1", model=MODEL_NAME)
 
     try:
-        # 1. Reset Environment
-        res = requests.post(f"{API_BASE_URL}/reset")
-        if res.status_code != 200:
-            return
+        # 1. Reset
+        res_data = make_post_request(f"{API_BASE_URL}/reset", {})
         
-        # 2. Logic Loop (Simplified for validation)
-        # Note: In a real test, you'd use client.chat.completions.create here
-        action_msg = "set_priority('High')"
+        # 2. Step
         action_payload = {"action_type": "set_priority", "content": "High"}
+        result = make_post_request(f"{API_BASE_URL}/step", action_payload)
         
-        response = requests.post(f"{API_BASE_URL}/step", json=action_payload)
+        reward = float(result['reward']['score'])
+        done = result['done']
         
-        if response.status_code == 200:
-            result = response.json()
-            # Yahan se data nikalna jo hamare FastAPI response mein hai
-            current_reward = float(result['reward']['score'])
-            is_done = result['done']
-            
-            steps_taken = 1
-            rewards.append(current_reward)
-            
-            # Log the step in mandatory format
-            log_step(step=1, action=action_msg, reward=current_reward, done=is_done)
-            
-            if current_reward > 0.0:
-                success = True
+        steps_taken = 1
+        rewards.append(reward)
+        log_step(step=1, action="set_priority:High", reward=reward, done=done)
+        
+        if reward > 0.0:
+            success = True
 
     except Exception as e:
-        print(f"Error during inference: {e}")
+        # Error logging as per STDOUT format
+        log_step(step=steps_taken+1, action="error", reward=0.0, done=True, error=str(e)[:50])
     finally:
-        # 🚨 MANDATORY: Always emit END line even on exception
         log_end(success=success, steps=steps_taken, rewards=rewards)
 
 if __name__ == "__main__":
