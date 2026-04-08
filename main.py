@@ -2,6 +2,7 @@ from fastapi import FastAPI, Body
 import uvicorn
 import os
 import sys
+import math
 
 # Root directory ko path mein add karo taaki imports na phate
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -11,6 +12,18 @@ from environment import TicketEnv
 
 app = FastAPI(title="TicketAgentEnv")
 env = TicketEnv()
+
+
+def _safe_score(value):
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return 0.5
+
+    if not math.isfinite(score):
+        return 0.5
+
+    return min(max(score, 0.01), 0.99)
 
 @app.get("/")
 def home():
@@ -29,6 +42,7 @@ def step(payload: object = Body(default_factory=dict)):
     parsed_payload = payload if isinstance(payload, dict) else {}
     action = Action(**parsed_payload)
     score, done, comment, info = env.step(action.action_type, action.content)
+    score = _safe_score(score)
     return StepResponse(
         observation=Observation(**env.get_state()),
         reward=Reward(score=score, comment=comment),

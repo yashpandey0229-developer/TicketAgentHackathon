@@ -1,5 +1,6 @@
 import os
 import sys
+import math
 
 import uvicorn
 from fastapi import FastAPI, Body
@@ -11,6 +12,18 @@ from models import Observation, Action, Reward, StepResponse
 
 app = FastAPI()
 env = TicketEnv()
+
+
+def _safe_score(value):
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return 0.5
+
+    if not math.isfinite(score):
+        return 0.5
+
+    return min(max(score, 0.01), 0.99)
 
 @app.get("/")
 async def root():
@@ -29,6 +42,7 @@ async def step(payload: object = Body(default_factory=dict)):
     parsed_payload = payload if isinstance(payload, dict) else {}
     action = Action(**parsed_payload)
     score, done, comment, info = env.step(action.action_type, action.content)
+    score = _safe_score(score)
     return StepResponse(
         observation=Observation(**env.get_state()),
         reward=Reward(score=score, comment=comment),
