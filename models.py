@@ -8,8 +8,8 @@ class Observation(BaseModel):
     status: str
 
 class Action(BaseModel):
-    action_type: str  # e.g., "reply", "set_priority", "close"
-    content: str
+    action_type: str = "reply"  # e.g., "reply", "set_priority", "close"
+    content: str = ""
 
 class Reward(BaseModel):
     score: float = Field(gt=0.0, lt=1.0)

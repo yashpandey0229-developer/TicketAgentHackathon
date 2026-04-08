@@ -2,7 +2,7 @@ import os
 import sys
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -25,7 +25,8 @@ async def state():
     return Observation(**env.get_state())
 
 @app.post("/step")
-async def step(action: Action):
+async def step(payload: dict = Body(default_factory=dict)):
+    action = Action(**(payload or {}))
     score, done, comment, info = env.step(action.action_type, action.content)
     return StepResponse(
         observation=Observation(**env.get_state()),

@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 import uvicorn
 import os
 import sys
@@ -25,7 +25,8 @@ def get_state():
     return Observation(**env.get_state())
 
 @app.post("/step", response_model=StepResponse)
-def step(action: Action):
+def step(payload: dict = Body(default_factory=dict)):
+    action = Action(**(payload or {}))
     score, done, comment, info = env.step(action.action_type, action.content)
     return StepResponse(
         observation=Observation(**env.get_state()),
