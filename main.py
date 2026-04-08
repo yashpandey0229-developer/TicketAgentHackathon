@@ -26,11 +26,12 @@ def get_state():
 
 @app.post("/step", response_model=StepResponse)
 def step(action: Action):
-    score, done, comment = env.step(action.action_type, action.content)
+    score, done, comment, info = env.step(action.action_type, action.content)
     return StepResponse(
         observation=Observation(**env.get_state()),
         reward=Reward(score=score, comment=comment),
-        done=done
+        done=done,
+        info=info,
     )
 
 def main():
