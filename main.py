@@ -7,7 +7,7 @@ import math
 # Root directory ko path mein add karo taaki imports na phate
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from models import Observation, Action, Reward, StepResponse
+from models import Observation, Reward, StepResponse
 from environment import TicketEnv
 
 app = FastAPI(title="TicketAgentEnv")
@@ -25,6 +25,27 @@ def _safe_score(value):
 
     return min(max(score, 0.01), 0.99)
 
+
+def _extract_action(payload):
+    if not isinstance(payload, dict):
+        return "reply", ""
+
+    raw_action = payload.get("action_type", "reply")
+    raw_content = payload.get("content", "")
+
+    action_type = str(raw_action).strip().lower() if raw_action is not None else "reply"
+    if action_type not in {"set_priority", "reply", "close"}:
+        action_type = "reply"
+
+    if raw_content is None:
+        content = ""
+    elif isinstance(raw_content, (dict, list, tuple, set)):
+        content = str(raw_content)
+    else:
+        content = str(raw_content)
+
+    return action_type, content
+
 @app.get("/")
 def home():
     return {"status": "Running", "spec": "OpenEnv 0.1.0"}
@@ -39,9 +60,8 @@ def get_state():
 
 @app.post("/step", response_model=StepResponse)
 def step(payload: object = Body(default_factory=dict)):
-    parsed_payload = payload if isinstance(payload, dict) else {}
-    action = Action(**parsed_payload)
-    score, done, comment, info = env.step(action.action_type, action.content)
+    action_type, content = _extract_action(payload)
+    score, done, comment, info = env.step(action_type, content)
     score = _safe_score(score)
     return StepResponse(
         observation=Observation(**env.get_state()),
