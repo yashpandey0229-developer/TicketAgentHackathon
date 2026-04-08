@@ -55,7 +55,7 @@ def main():
 
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
-    tasks = ["T1", "T2", "T3"]
+    tasks = ["easy", "medium", "hard"]
 
     total_score = 0.0
 
@@ -86,11 +86,14 @@ def main():
 
         score = max(0.01, min(score, 0.99))
         total_score += score
-        print(f"[STEP] step=1 action={action_type} reward={score:.2f} done={str(done).lower()} error=null", flush=True)
-        print(f"[END] success=true steps=1 rewards={score:.2f}", flush=True)
+        print(
+            f"[STEP] action={action_type} task_score={score:.4f} done={str(done).lower()} error=null",
+            flush=True,
+        )
+        print(f"[END] task_score={score:.4f} status=completed", flush=True)
 
     baseline_score = total_score / len(tasks)
-    print(f"[SUMMARY] tasks={len(tasks)} baseline_score={baseline_score:.2f}", flush=True)
+    print(f"[SUMMARY] average_task_score={baseline_score:.4f}", flush=True)
 
 if __name__ == "__main__":
     main()
