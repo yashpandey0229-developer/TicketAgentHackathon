@@ -25,8 +25,9 @@ async def state():
     return Observation(**env.get_state())
 
 @app.post("/step")
-async def step(payload: dict = Body(default_factory=dict)):
-    action = Action(**(payload or {}))
+async def step(payload: object = Body(default_factory=dict)):
+    parsed_payload = payload if isinstance(payload, dict) else {}
+    action = Action(**parsed_payload)
     score, done, comment, info = env.step(action.action_type, action.content)
     return StepResponse(
         observation=Observation(**env.get_state()),
