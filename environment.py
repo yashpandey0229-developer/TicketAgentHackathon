@@ -83,20 +83,27 @@ class TicketEnv:
         if self.current_task is None:
             self.reset()
 
+        normalized_action = (action_type or "").strip().lower()
+        normalized_content = (content or "").strip()
         reward = self._score_action(action_type, content)
         expected_action = self.current_task["expected_action"]
         done = True
 
-        if action_type == expected_action:
+        if normalized_action == "set_priority":
+            candidate_priority = normalized_content.lower()
+            if candidate_priority in {"low", "medium", "high"}:
+                self.current_ticket["priority"] = candidate_priority.capitalize()
+
+        if normalized_action == expected_action:
             comment = f"Task {self.current_task['id']} handled with the expected action."
         else:
             comment = f"Task {self.current_task['id']} completed with a partial-match action."
 
-        self.current_ticket["status"] = "Closed" if action_type == "close" else "Pending"
+        self.current_ticket["status"] = "Closed" if normalized_action == "close" else "Pending"
 
         info = {
             "task_id": self.current_task["id"],
             "expected_action": expected_action,
-            "received_action": (action_type or "").strip().lower(),
+            "received_action": normalized_action,
         }
         return float(reward), done, comment, info

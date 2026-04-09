@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from environment import TicketEnv
 from models import Observation, Reward, StepResponse
 
-app = FastAPI()
+app = FastAPI(title="TicketAgentEnv", version="0.1.0")
 env = TicketEnv()
 
 
@@ -48,17 +48,17 @@ def _extract_action(payload):
 
 @app.get("/")
 async def root():
-    return {"status": "Running", "version": "v31", "spec": "OpenEnv 0.1.0"}
+    return {"status": "Running", "spec": "OpenEnv 0.1.0"}
 
-@app.post("/reset")
+@app.post("/reset", response_model=Observation)
 async def reset():
     return Observation(**env.reset())
 
-@app.get("/state")
+@app.get("/state", response_model=Observation)
 async def state():
     return Observation(**env.get_state())
 
-@app.post("/step")
+@app.post("/step", response_model=StepResponse)
 async def step(payload: object = Body(default_factory=dict)):
     action_type, content = _extract_action(payload)
     score, done, comment, info = env.step(action_type, content)
@@ -71,7 +71,7 @@ async def step(payload: object = Body(default_factory=dict)):
     )
 
 def main():
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    uvicorn.run(app, host="0.0.0.0", port=7860, reload=False)
 
 if __name__ == "__main__":
     main()

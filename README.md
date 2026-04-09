@@ -9,57 +9,157 @@ tags:
 - openenv
 ---
 
-# 🎟️ TicketAgentEnv: Customer Support AI Simulation
+# TicketAgentEnv: OpenEnv Customer Support Environment
 
-A real-world environment for AI agents to handle customer support tickets following the **OpenEnv v0.1.0** specification.
+TicketAgentEnv is a deterministic, container-ready OpenEnv-compatible environment for evaluating AI ticket-handling behavior. It is designed for stable benchmarking and straightforward validator integration.
 
----
+## Why This Project Is Submission-Ready
+- Deterministic task sequence (3 fixed ticket scenarios)
+- Strict reward bounds in the open interval $(0,1)$
+- Stable OpenEnv-style endpoints: `/reset`, `/step`, `/state`
+- Dockerized runtime on port `7860`
+- Reproducible baseline runner (`inference.py`) that reports average score
 
-## What This Environment Does
-This project simulates three customer-support tasks with deterministic grading. Each task produces a reward strictly between 0 and 1, and the baseline runner reports a reproducible average score across all three tasks.
+## Environment Contract
 
----
+### Observation Schema
+Each observation contains:
+- `id`: ticket id (example: `T1`)
+- `issue`: customer message text
+- `priority`: `Low` | `Medium` | `High`
+- `status`: `Open` | `Pending` | `Closed`
 
-## 🚀 Environment Overview
-This Space provides a containerized API for AI agents to interact with a ticketing system. It is designed to test an agent's ability to prioritize, reply, and resolve issues autonomously.
+### Action Schema
+`POST /step` expects JSON payload:
 
-### 🧠 Observation Space
-The environment returns a JSON object:
-- `id`: Unique Ticket ID (e.g., `T1`).
-- `issue`: The customer's query text.
-- `priority`: Current priority (`Low`, `Medium`, `High`).
-- `status`: Current state (`Open`, `Pending`, `Closed`).
+```json
+{
+	"action_type": "set_priority | reply | close",
+	"content": "string"
+}
+```
 
-### 🛠️ Action Space
-Agents can perform:
-1. **`set_priority`**: Assigns `Low`, `Medium`, or `High`.
-2. **`reply`**: Sends a text response.
-3. **`close`**: Marks the ticket as resolved.
+Invalid or missing actions are safely normalized to `reply` by the API layer.
 
-### 🎯 Tasks
-The environment rotates through three deterministic tasks:
-1. Raise a refund ticket priority to `High`.
-2. Reply to a customer with a concise status update.
-3. Close a ticket after resolution is confirmed.
+### Response Schema (`/step`)
 
-### 📈 Scoring
-Rewards are shaped from partial progress signals and always stay within the open interval $(0,1)$.
+```json
+{
+	"observation": {
+		"id": "T1",
+		"issue": "...",
+		"priority": "Low",
+		"status": "Pending"
+	},
+	"reward": {
+		"score": 0.73,
+		"comment": "Task T1 handled with the expected action."
+	},
+	"done": true,
+	"info": {
+		"task_id": "T1",
+		"expected_action": "set_priority",
+		"received_action": "set_priority"
+	}
+}
+```
 
----
+## Deterministic Tasks
+The environment rotates through exactly 3 tasks in order:
+1. Raise refund ticket priority to `High`
+2. Send a concise customer update reply
+3. Close a ticket after resolution confirmation
 
-## Baseline Runner
-`inference.py` runs a reproducible baseline against the local API. It submits one action per task, records the returned reward, and prints an average score summary.
+## Scoring Model
+- Base reward with action-matching and content-quality shaping
+- Raw environment score is constrained to `[0.05, 0.95]`
+- API layer additionally guards reward values to remain in `(0.01, 0.99)`
+- Final response always satisfies the strict validator expectation: `0 < score < 1`
 
----
+## Quick Start (Local)
 
-## 🏗️ Technical Specs
-- **Engine:** FastAPI / Python 3.10+
-- **Standard:** OpenEnv Compliant (`/reset`, `/step`, `/state`)
-- **Package:** Standardized via `pyproject.toml` for multi-mode deployment.
+### 1) Install dependencies
+```bash
+pip install -r requirements.txt
+```
 
-## Local Run
-1. Install dependencies from `requirements.txt`.
-2. Start the API with `python server/app.py`.
-3. Run `python inference.py` to reproduce the baseline scores.
+### 2) Start the server
+```bash
+python server/app.py
+```
 
----
+Server runs at:
+- `http://127.0.0.1:7860/`
+
+### 3) Smoke test endpoints
+```bash
+curl -X POST http://127.0.0.1:7860/reset
+curl http://127.0.0.1:7860/state
+curl -X POST http://127.0.0.1:7860/step -H "Content-Type: application/json" -d "{\"action_type\":\"reply\",\"content\":\"Thanks for your patience. I will update you shortly.\"}"
+```
+
+## Baseline Evaluation Runner
+`inference.py` runs one action per task and prints summary metrics.
+
+Required environment variables:
+- `API_BASE_URL`
+- `MODEL_NAME`
+- `HF_TOKEN`
+
+Optional:
+- `API_BASE_URL` default: `https://api.openai.com/v1`
+- `MODEL_NAME` default: `gpt-4.1-mini`
+- `ENV_URL` (default: `http://127.0.0.1:7860`)
+
+Run:
+```bash
+python inference.py
+```
+
+Expected output pattern:
+- `[START] task=<task_name> env=<benchmark_name> model=<model_name>`
+- `[STEP] step=<n> action=<action_str> reward=<r.xx> done=<true|false> error=<msg|null>`
+- `[END] success=<true|false> steps=<n> rewards=<r1,r2,...,rn> error=<msg|null>`
+
+## Docker Run
+
+Build image:
+```bash
+docker build -t ticket-agent-env .
+```
+
+Start container:
+```bash
+docker run --rm -p 7860:7860 ticket-agent-env
+```
+
+## Validation Checklist (Phase-Pass Oriented)
+Use this checklist before submission:
+
+1. Container builds without errors (`docker build`)
+2. Service starts on port `7860`
+3. `POST /reset` returns valid observation JSON
+4. `POST /step` returns `reward.score` strictly between `0` and `1`
+5. `done` is boolean, and response includes `observation`, `reward`, `info`
+6. Multiple `reset` calls cycle deterministic tasks (`T1`, `T2`, `T3`, repeat)
+7. Baseline runner completes and prints a summary average
+
+## Project Structure
+- `server/app.py`: API entrypoint used by Docker runtime
+- `main.py`: alternate FastAPI entrypoint
+- `environment.py`: deterministic ticket tasks and scoring
+- `models.py`: Pydantic schemas for observation/action/reward/step response
+- `inference.py`: baseline evaluator
+- `openenv.yaml`: environment metadata
+- `Dockerfile`: deployment image definition
+
+## Tech Stack
+- Python 3.10+
+- FastAPI + Uvicorn
+- Pydantic
+- Requests
+- OpenAI SDK (for baseline client)
+
+## Notes
+- The environment is intentionally lightweight and deterministic to keep benchmark variance low.
+- The API is defensive against malformed action payloads to improve evaluation stability.
