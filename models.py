@@ -15,7 +15,7 @@ class Reward(BaseModel):
     score: float = Field(gt=0.0, lt=1.0)
     comment: str
 
-# Yeh naya model hai jo main.py ke /step endpoint ke liye zaroori hai
+# Standard OpenEnv step response payload.
 class StepResponse(BaseModel):
     observation: Observation
     reward: Reward
