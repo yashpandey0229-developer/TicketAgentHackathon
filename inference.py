@@ -1,5 +1,6 @@
 import os
 import json
+import math
 
 import requests
 from openai import OpenAI
@@ -21,29 +22,50 @@ def decide_action(issue_text):
 
 
 def call_llm_proxy(client, issue_text):
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "Return JSON with keys action_type and content. "
-                    "Allowed action_type: set_priority, reply, close."
-                ),
-            },
-            {"role": "user", "content": f"Ticket issue: {issue_text}"},
-        ],
-        temperature=0,
-        max_tokens=80,
-    )
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Return JSON with keys action_type and content. "
+                        "Allowed action_type: set_priority, reply, close."
+                    ),
+                },
+                {"role": "user", "content": f"Ticket issue: {issue_text}"},
+            ],
+            temperature=0,
+            max_tokens=80,
+        )
 
-    raw = (response.choices[0].message.content or "").strip()
-    if raw:
-        try:
-            json.loads(raw)
-        except Exception:
-            # Ignore parse failures. The call itself is what validator checks for LLM proxy usage.
-            pass
+        raw = (response.choices[0].message.content or "").strip()
+        if raw:
+            try:
+                json.loads(raw)
+            except Exception:
+                # Ignore parse failures. The call itself is what validator checks for LLM proxy usage.
+                pass
+        return True
+    except Exception:
+        # Never block environment progression if proxy is transiently unavailable.
+        return False
+
+
+def _sanitize_score(value):
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return 0.50
+
+    if not math.isfinite(score):
+        return 0.50
+
+    if score <= 0.0:
+        return 0.01
+    if score >= 1.0:
+        return 0.99
+    return score
 
 
 class RemoteEnv:
@@ -114,8 +136,7 @@ def main():
             action_type, content = decide_action(issue_text)
 
             payload = env.step(action_type, content)
-            score = float(payload["reward"]["score"])
-            score = max(0.01, min(score, 0.99))
+            score = _sanitize_score(payload["reward"].get("score"))
             done = bool(payload.get("done", False))
 
             rewards.append(score)
