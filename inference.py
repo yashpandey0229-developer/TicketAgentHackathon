@@ -124,7 +124,7 @@ def main():
 
         rewards = []
         steps = 0
-        success = False
+        success_score = 0.50
 
         try:
             observation = env.reset()
@@ -141,7 +141,7 @@ def main():
 
             rewards.append(score)
             steps = 1
-            success = done
+            success_score = score
             print(
                 f"[STEP] step=1 action={_format_action(action_type, content)} "
                 f"reward={_format_reward(score)} done={_format_bool(done)} error=null",
@@ -157,7 +157,7 @@ def main():
             fallback_score = 0.50
             rewards.append(fallback_score)
             steps = 1
-            success = True
+            success_score = fallback_score
             print(
                 f"[STEP] step=1 action={_format_action(fallback_action_type, fallback_content)} "
                 f"reward={_format_reward(fallback_score)} done=true error={error_msg}",
@@ -171,7 +171,7 @@ def main():
 
             rewards_str = ",".join(_format_reward(r) for r in rewards)
             print(
-                f"[END] success={_format_bool(success)} steps={steps} rewards={rewards_str}",
+                f"[END] success={_format_reward(success_score)} steps={steps} rewards={rewards_str}",
                 flush=True,
             )
 
