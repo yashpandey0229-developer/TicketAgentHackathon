@@ -5,7 +5,10 @@ import math
 import requests
 from openai import OpenAI
 
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4.1-mini")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+HF_TOKEN = os.getenv("HF_TOKEN")
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 ENV_URL = os.getenv("ENV_URL", "http://127.0.0.1:7860")
 
 
@@ -99,10 +102,6 @@ def _format_bool(value):
     return "true" if bool(value) else "false"
 
 
-def _format_reward(value):
-    return f"{float(value):.2f}"
-
-
 def _format_action(action_type, content):
     safe_action = _one_line(action_type)
     safe_content = _one_line(content).replace("'", '"')
@@ -113,10 +112,15 @@ def _emit_score(value):
     safe = _sanitize_score(value)
     return f"{safe:.2f}"
 
+
+def _emit_rewards(values):
+    return ",".join(_emit_score(value) for value in values)
+
 def main():
-    api_base_url = os.environ["API_BASE_URL"]
-    api_key = os.environ["API_KEY"]
-    client = OpenAI(base_url=api_base_url, api_key=api_key)
+    if not HF_TOKEN:
+        raise RuntimeError("HF_TOKEN must be set in the environment.")
+
+    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
     env = RemoteEnv(ENV_URL)
 
@@ -124,10 +128,12 @@ def main():
     task_labels = ["easy", "medium", "hard"]
 
     for task in task_labels:
-        print(f"[START] task={task} env={benchmark} model=llm", flush=True)
+        print(f"[START] task={task} env={benchmark} model={MODEL_NAME}", flush=True)
 
         rewards = []
-        success_score = 0.50
+        success = False
+        steps_taken = 0
+        score = 0.50
 
         try:
             observation = env.reset()
@@ -139,30 +145,38 @@ def main():
             action_type, content = decide_action(issue_text)
 
             payload = env.step(action_type, content)
-            score = _sanitize_score(payload["reward"].get("score"))
+            reward = _sanitize_score(payload["reward"].get("score"))
             done = bool(payload.get("done", False))
 
-            rewards.append(score)
-            success_score = score
-            _ = done
-            emitted_score = _emit_score(success_score)
-            print(f"[STEP] reward={emitted_score} done=true error=null", flush=True)
+            rewards.append(reward)
+            steps_taken = 1
+            score = reward
+            success = done
+            print(
+                f"[STEP]  step=1 action={action_type} reward={_emit_score(reward)} done={_format_bool(done)} error=null",
+                flush=True,
+            )
         except Exception as exc:
-            _ = exc
+            error_msg = _one_line(str(exc)) or "null"
             fallback_score = 0.50
             rewards.append(fallback_score)
-            success_score = fallback_score
-            emitted_score = _emit_score(success_score)
-            print(f"[STEP] reward={emitted_score} done=true error=failed", flush=True)
+            steps_taken = 1
+            score = fallback_score
+            success = False
+            print(
+                f"[STEP]  step=1 action=reply reward={_emit_score(fallback_score)} done=false error={error_msg}",
+                flush=True,
+            )
         finally:
             try:
                 env.close()
             except Exception:
                 pass
 
-            rewards_str = ",".join(_emit_score(r) for r in rewards)
-            emitted_score = _emit_score(success_score)
-            print(f"[END] success={emitted_score} rewards={rewards_str}", flush=True)
+            print(
+                f"[END]   success={_format_bool(success)} steps={steps_taken} score={_emit_score(score)} rewards={_emit_rewards(rewards)}",
+                flush=True,
+            )
 
 if __name__ == "__main__":
     main()
