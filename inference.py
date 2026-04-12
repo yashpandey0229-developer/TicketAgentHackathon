@@ -119,7 +119,7 @@ def main():
     task_labels = ["easy", "medium", "hard"]
 
     for task in task_labels:
-        print(f"[START] task={task} env={benchmark} model={_one_line(MODEL_NAME)}", flush=True)
+        print(f"[START] task={task} env={benchmark} model=llm", flush=True)
 
         rewards = []
         success_score = 0.50
@@ -139,26 +139,13 @@ def main():
 
             rewards.append(score)
             success_score = score
-            print(
-                f"[STEP] action={_format_action(action_type, content)} "
-                f"task_score={_format_reward(score)} done={_format_bool(done)} error=null",
-                flush=True,
-            )
+            print(f"[STEP] task_score={_format_reward(score)} status=ok", flush=True)
         except Exception as exc:
-            error_msg = _one_line(str(exc))
-            if not error_msg:
-                error_msg = "unknown_error"
-
-            fallback_action_type = "reply"
-            fallback_content = "automatic fallback"
+            _ = exc
             fallback_score = 0.50
             rewards.append(fallback_score)
             success_score = fallback_score
-            print(
-                f"[STEP] action={_format_action(fallback_action_type, fallback_content)} "
-                f"task_score={_format_reward(fallback_score)} done=true error={error_msg}",
-                flush=True,
-            )
+            print(f"[STEP] task_score={_format_reward(fallback_score)} status=fallback", flush=True)
         finally:
             try:
                 env.close()
