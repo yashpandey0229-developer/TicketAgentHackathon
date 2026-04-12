@@ -116,14 +116,12 @@ def main():
     env = RemoteEnv(ENV_URL)
 
     benchmark = "ticket_agent"
-    total_tasks = 3
+    task_labels = ["easy", "medium", "hard"]
 
-    for task_index in range(1, total_tasks + 1):
-        task = f"ticket-support-{task_index}"
+    for task in task_labels:
         print(f"[START] task={task} env={benchmark} model={_one_line(MODEL_NAME)}", flush=True)
 
         rewards = []
-        steps = 0
         success_score = 0.50
 
         try:
@@ -140,11 +138,10 @@ def main():
             done = bool(payload.get("done", False))
 
             rewards.append(score)
-            steps = 1
             success_score = score
             print(
-                f"[STEP] step=1 action={_format_action(action_type, content)} "
-                f"reward={_format_reward(score)} done={_format_bool(done)} error=null",
+                f"[STEP] action={_format_action(action_type, content)} "
+                f"task_score={_format_reward(score)} done={_format_bool(done)} error=null",
                 flush=True,
             )
         except Exception as exc:
@@ -156,11 +153,10 @@ def main():
             fallback_content = "automatic fallback"
             fallback_score = 0.50
             rewards.append(fallback_score)
-            steps = 1
             success_score = fallback_score
             print(
-                f"[STEP] step=1 action={_format_action(fallback_action_type, fallback_content)} "
-                f"reward={_format_reward(fallback_score)} done=true error={error_msg}",
+                f"[STEP] action={_format_action(fallback_action_type, fallback_content)} "
+                f"task_score={_format_reward(fallback_score)} done=true error={error_msg}",
                 flush=True,
             )
         finally:
@@ -171,7 +167,7 @@ def main():
 
             rewards_str = ",".join(_format_reward(r) for r in rewards)
             print(
-                f"[END] success={_format_reward(success_score)} steps={steps} rewards={rewards_str}",
+                f"[END] task_score={_format_reward(success_score)} rewards={rewards_str} status=completed",
                 flush=True,
             )
 
