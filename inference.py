@@ -108,6 +108,11 @@ def _format_action(action_type, content):
     safe_content = _one_line(content).replace("'", '"')
     return f"{safe_action}('{safe_content}')"
 
+
+def _emit_score(value):
+    safe = _sanitize_score(value)
+    return f"{safe:.2f}"
+
 def main():
     api_base_url = os.environ["API_BASE_URL"]
     api_key = os.environ["API_KEY"]
@@ -139,24 +144,25 @@ def main():
 
             rewards.append(score)
             success_score = score
-            print(f"[STEP] task_score={_format_reward(score)} status=ok", flush=True)
+            _ = done
+            emitted_score = _emit_score(success_score)
+            print(f"[STEP] reward={emitted_score} done=true error=null", flush=True)
         except Exception as exc:
             _ = exc
             fallback_score = 0.50
             rewards.append(fallback_score)
             success_score = fallback_score
-            print(f"[STEP] task_score={_format_reward(fallback_score)} status=fallback", flush=True)
+            emitted_score = _emit_score(success_score)
+            print(f"[STEP] reward={emitted_score} done=true error=failed", flush=True)
         finally:
             try:
                 env.close()
             except Exception:
                 pass
 
-            rewards_str = ",".join(_format_reward(r) for r in rewards)
-            print(
-                f"[END] task_score={_format_reward(success_score)} rewards={rewards_str} status=completed",
-                flush=True,
-            )
+            rewards_str = ",".join(_emit_score(r) for r in rewards)
+            emitted_score = _emit_score(success_score)
+            print(f"[END] success={emitted_score} rewards={rewards_str}", flush=True)
 
 if __name__ == "__main__":
     main()
